@@ -30,16 +30,9 @@ celery = make_celery(app)
 from tasks import run_medusa
 
 UPLOAD_FOLDER = 'uploads'
-# Here how do we handle fasta extensions?
-ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
-#
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
-
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
@@ -75,7 +68,8 @@ def run():
 
         # Save input files
         draft = request.files['draft']
-        if draft and allowed_file(draft.filename):
+        #if draft and allowed_file(draft.filename):
+        if draft:
             filename = secure_filename(draft.filename)
             draft.save(os.path.join(wdir, filename))
             dname = filename
@@ -140,7 +134,7 @@ def results(task_id):
     if is_task_ready(run_medusa, task_id):
         return str(run_medusa.AsyncResult(task_id).get())
     else:
-        return '<html><head><meta HTTP-EQUIV="REFRESH" content="10"></head></html>'
+        return render_template('waiting.html')
 
 @app.route('/stats')
 def stats():
