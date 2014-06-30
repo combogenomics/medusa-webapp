@@ -102,6 +102,14 @@ def run_medusa(wdir, draft, targets):
     # Compute results
     d['scaffold'] = single_genome_stats('scaffold.fasta')
 
+    # Be kind, remove the original files...
+    shutil.rmtree('drafts')
+    os.remove(draft)
+
+    # ...and the medusa bundle
+    shutil.rmtree('medusa_scripts')
+    os.remove('medusa.jar')
+    
     # Return back to the original directory
     os.chdir(sdir)
 
