@@ -77,8 +77,13 @@ def run_medusa(wdir, draft, targets):
     # Length
     # Number of molecules
     # N50
-    d = genome_stats(os.path.join(wdir,draft),
-                    [os.path.join(wdir, x) for x in targets])    
+    
+    # Catch errors, may be due to incorrect format
+    try:
+        d = genome_stats(os.path.join(wdir,draft),
+                        [os.path.join(wdir, x) for x in targets])
+    except:
+        return (False, {})
 
     # Create he drafts directory, move the genomes there
     try:
@@ -100,15 +105,20 @@ def run_medusa(wdir, draft, targets):
         return (False, d)
 
     # Compute results
-    d['scaffold'] = single_genome_stats('scaffold.fasta')
+    try:
+        d['scaffold'] = single_genome_stats('scaffold.fasta')
+    except:
+        return (False, d)
 
-    # Be kind, remove the original files...
-    shutil.rmtree('drafts')
-    os.remove(draft)
+    try:
+        # Be kind, remove the original files...
+        shutil.rmtree('drafts')
+        os.remove(draft)
 
-    # ...and the medusa bundle
-    shutil.rmtree('medusa_scripts')
-    os.remove('medusa.jar')
+        # ...and the medusa bundle
+        shutil.rmtree('medusa_scripts')
+        os.remove('medusa.jar')
+    except:pass
     
     # Return back to the original directory
     os.chdir(sdir)

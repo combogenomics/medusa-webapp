@@ -11,43 +11,34 @@ from utils import generate_time_hash
 from worker import make_celery
 from worker import is_task_ready
 
+from store import add_job
+from store import retrieve_job
+
+import settings
 
 app = Flask(__name__)
 
-# App config - empty?
-app.config.from_object(__name__)
-app.config.update(dict(
-    DEBUG=True,
-    SECRET_KEY='development key',
-    CELERY_BROKER_URL='redis://localhost:6379',
-    CELERY_RESULT_BACKEND='redis://localhost:6379',
-))
-app.config.from_envvar('FLASKR_SETTINGS', silent=True)
+# App config from settings.py
+app.config.from_object(settings)
 
+# Init celery
 celery = make_celery(app)
 
 # Later import after celery has been set up
 from tasks import run_medusa
 
-UPLOAD_FOLDER = 'uploads'
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
-
 @app.route('/')
 def index():
-    # Here add sessions to rember past entries in the form?
-    # Sessions may be used also to grant access only to the submitter
+    # TODO: Here add sessions to rember past entries in the form?
     return render_template('index.html')
 
 @app.route('/run', methods=['GET', 'POST'])
 def run():
     # Here handle submissions and run the analysis
     # Send emails on failures, success
-    # Use redis or sqlite to store user stats (hashed for privacy)
+    # Use redis to store user stats (hashed for privacy)
     if request.method == 'POST':
         # First things first, compute user hash
-
         req_id = generate_time_hash(request.host)
 
         # To avoid slow-downs in the running directory
@@ -74,29 +65,27 @@ def run():
             draft.save(os.path.join(wdir, filename))
             dname = filename
         else:
-            # TODO: something wrong here
-            # return an error message
-            pass
+            flash(u'Something went wrong with your draft genome', 'error')
+            return redirect(url_for('index'))
        
         # Save the genomes files
         genomes = set()
-        for genome in request.files.getlist('genomes'):
-            filename = secure_filename(genome.filename)
-            genome.save(os.path.join(wdir, filename))
-            genomes.add(filename)
-        else:
-            # TODO: something wrong here
-            # return an error message
-            pass
+        try:
+            for genome in request.files.getlist('genomes'):
+                filename = secure_filename(genome.filename)
+                genome.save(os.path.join(wdir, filename))
+                genomes.add(filename)
+        except:
+            flash(u'Something went wrong with your target genome', 'error')
+            return redirect(url_for('index'))
                 
         # Check email, hash it
         email = request.form['email']
         if email:
             hemail = generate_hash(email)
         else:
-            # TODO: something wrong here
-            # return an error message
-            pass
+            flash(u'Something went wrong with your email', 'error')
+            return redirect(url_for('index'))
         
         # Notify me?
         if 'notify' in request.form:
@@ -106,31 +95,39 @@ def run():
 
         # Secure my results?
         passphrase = request.form['passphrase']
-        hpass = generate_hash(passphrase)
+        if passphrase:
+            hpass = generate_hash(passphrase)
+        else:
+            hpass = None
         
-        # TODO: check my inputs
-        # TODO: FASTA checker
-
-        # TODO: send details to redis
-        # Mostly to check if the job is ready
-
         # Submit the job
-        # Then redirect to the waiting page
-        result = run_medusa.delay(wdir, dname, genomes)        
- 
-        print req_id        
+        # Then redirect to the waiting pagei
+        try:
+            result = run_medusa.delay(wdir, dname, genomes)
+        except:
+            flash(u'Could not submit your job', 'error')
+            return redirect(url_for('index'))
+            
+        try:
+            # Send details to redis
+            add_job(req_id, request.host, hemail, result.task_id, hpass)
+        except:
+            flash(u'Could not save your job details', 'error')
+            return redirect(url_for('index')) 
 
         return redirect(url_for('results',
-                        task_id=result.task_id))
-    # No POST, check job status
-    # redirect if finished
-    # show a waiting page otherwise
+                        req_id_id=req_id))
+
+    # No POST, return to start
+    flash(u'No job details given, would you like to start a new one?', 'warning')
     return redirect(url_for('index'))
 
-@app.route('/results/<task_id>')
-def results(task_id):
+@app.route('/results/<req_id>')
+def results(req_id):
     # Here show the results or the wait page
     # Get the right job using the session or the hash key, a la contiguator
+    # TODO: get details from redis
+    # TODO: check passphrase
     if is_task_ready(run_medusa, task_id):
         return str(run_medusa.AsyncResult(task_id).get())
     else:

@@ -2,7 +2,15 @@
 {% block title %}Medusa Server{% endblock %}
 {% block container %}
       <div class="container">
-
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul class=flashes>
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      {% endwith %}
         <div class="row">
           <div class="col-md-4 col-md-offset-4">
             <form role="form" enctype="multipart/form-data"
