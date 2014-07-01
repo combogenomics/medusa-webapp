@@ -13,6 +13,7 @@ def add_job(req_id, ip, email, task_id, passphrase=None):
     r.hset(jid, 'ip', ip)
     r.hset(jid, 'email', email)
     r.hset(jid, 'task_id', task_id)
+    r.hset(jid, 'date', time.asctime())
 
     if passphrase is not None:
         r.hset(jid, 'passphrase', passphrase)
@@ -20,4 +21,4 @@ def add_job(req_id, ip, email, task_id, passphrase=None):
 def retrieve_job(req_id):
     r = redis.Redis()
 
-    return r.hgetall(req_id)
+    return r.hgetall('medusa_%s'%req_id)
