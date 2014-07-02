@@ -12,6 +12,7 @@
 
     <!-- Bootstrap core CSS -->
     <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
 
     <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
 
@@ -24,6 +25,19 @@
   </head>
 
   <body>
+
+    <div class="header">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-1 col-md-offset-3">
+            <img alt="Logo" src="{{ url_for('static', filename='img/logo.png') }}" class="img-responsive">
+          </div><!-- col -->
+          <div class="col-md-5">
+            <h1 class="title">Medusa web server</h1>
+          </div><!-- col -->
+        </div><!-- row -->
+      </div><!-- container -->
+    </div><!-- header -->
     
     <div class="home">
 
@@ -42,6 +56,43 @@
       </div> <!-- /container -->
       {% endblock %}
     </div> <!-- /home -->
+
+    <div class="footer">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-3 col-md-offset-3">
+            <h5>Brought to you by</h5>
+          <div class="muted">
+            <p>
+              <a href="http://www.unifi.it/dbefcb/" target="_blank">
+                <img alt="Combo" src="{{ url_for('static', filename='img/combo.png') }}" class="bg-container" width="100">
+              </a>
+            </p>
+            <p>
+              <a href="http://www.unifi.it/dbefcb/" target="_blank">Florence computational biology group</a>
+              <br>
+              <a href="http://www.unifi.it/dblage/" target="_blank">Department of evolutionary biology</a>
+              <br>
+              <a href="http://www.unifi.it/">University of Florence</a>
+            </p>
+          </div>
+          </div><!-- col -->
+          <div class="col-md-3">
+            <h5>Contacts</h5>
+          <div class="muted">
+            <p>
+              For feedback, bug reports and other information:
+              </p><ul>
+                <li>combo.unifi@gmail.com</li>
+                <li>marco@ebi.ac.uk</li>
+                <li>emanuele.bosi@unifi.it</li>
+                <li>beatrice.donati@gmail.com</li>
+                <li>marco.fondi@unifi.it</li>
+                <li>sara.brunetti@unisi.it</li>                
+          </div><!-- col -->
+        </div><!-- row -->
+      </div><!-- container -->
+    </div><!-- header -->
 
     <!-- Bootstrap core JavaScript
     ================================================== -->

@@ -3,7 +3,7 @@
 {% block container %}
       <div class="container">
         <div class="row">
-          <div class="col-md-4 col-md-offset-4">
+          <div class="col-md-6 col-md-offset-3">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
@@ -15,22 +15,74 @@
         {% endif %}
       {% endwith %}
 
+            <h2>Results summary</h2>
+
             <table class="table table-condensed table-hover">
-	      <thead>
-                <tr>
-	          <th></th>
-		  <th># contigs</th>
-		  <th>Length (bp)</th>
-                  <th>N50 (bp)</th>
-		</tr>
-              </thead>
-	      <tbody>
-	        <tr>
-	          <!-- logics here -->
-	        </tr>
-	      </tbody>   
-            </table> 
-      
+            <thead>
+              <tr>
+	            <th></th>
+		        <th># contigs</th>
+		        <th>Length (bp)</th>
+                <th>N50 (bp)</th>
+		      </tr>
+            </thead>
+	        <tbody>
+              {% if data %}
+                {% if data['draft']['N50'] < data['scaffold']['N50'] %}
+	            <tr class='danger'>
+                {% else %}
+                <tr class='success'>
+                {% endif %}
+                  <td>Input draft genome</td>
+                  <td>{{ data['draft']['contigs'] }}</td>
+                  <td>{{ data['draft']['length'] }}</td>
+                  <td>{{ data['draft']['N50'] }}</td>
+                </tr>   
+                {% if data['draft']['N50'] < data['scaffold']['N50'] %}
+	            <tr class='success'>
+                {% else %}
+                <tr class='danger'>
+                {% endif %}
+                  <td>Output scaffolded genome</td>
+                  <td>{{ data['scaffold']['contigs'] }}</td>
+                  <td>{{ data['scaffold']['length'] }}</td>
+                  <td>{{ data['scaffold']['N50'] }}</td>   
+	            </tr>
+                {% for target in data['targets'] %}
+	            </tr>
+                  <td>{{ target['name'].split('.inp')[0] }}</td>
+                  <td>{{ target['contigs'] }}</td>
+                  <td>{{ target['length'] }}</td>
+                  <td>{{ target['N50'] }}</td>   
+	            </tr>
+                {% endfor %}
+              {% endif %}
+	        </tbody>   
+            </table>
+
+            <a class="btn btn-success btn-lg btn-block" href="/scaffold/{{ req_id }}">
+              <span class="glyphicon glyphicon-save"></span>
+               Download the scaffold FASTA
+            </a>
+
+            <hr>
+
+            <a class="btn btn-warning btn-lg btn-block" href="/log/{{ req_id }}">
+              <span class="glyphicon glyphicon-eye-open"></span>
+               Have a look at the log
+            </a>
+
+            <a class="btn btn-danger btn-lg btn-block" href="/err/{{ req_id }}">
+              <span class="glyphicon glyphicon-eye-open"></span>
+               Have a look at the error log
+            </a>
+
+            <a class="btn btn-primary btn-lg btn-block" href="/">
+              <span class="glyphicon glyphicon-repeat"></span>
+               Launch a new job
+            </a>
+
+
           </div> <!-- /col -->
         </div> <!-- /row -->
 

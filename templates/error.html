@@ -4,7 +4,7 @@
       <div class="container">
 
         <div class="row">
-          <div class="col-md-4 col-md-offset-4">
+          <div class="col-md-6 col-md-offset-3">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
@@ -19,7 +19,7 @@
             <h4>Are you sure that you provided the input files in FASTA format?</h4>
             <p>You can have a look at the logs and send them to the web-masters</p>
 
-            <a class="btn btn-success btn-lg btn-block" href="/log/{{ req_id }}">
+            <a class="btn btn-warning btn-lg btn-block" href="/log/{{ req_id }}">
               <span class="glyphicon glyphicon-eye-open"></span>
                Have a look at the log
             </a>
