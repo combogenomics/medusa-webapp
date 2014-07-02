@@ -21,6 +21,13 @@ app = Flask(__name__)
 # App config from settings.py
 app.config.from_object(settings)
 
+# Production settings that override the testing ones
+try:
+    import production
+    app.config.from_object(production)
+except ImportError:
+    pass
+
 # Init celery
 celery = make_celery(app)
 
