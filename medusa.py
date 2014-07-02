@@ -2,7 +2,7 @@
 
 import os
 from flask import Flask, request, session, g, redirect, url_for, abort, \
-     render_template, flash, escape
+     render_template, flash, escape, Response
 from werkzeug.utils import secure_filename
 
 from utils import generate_hash
@@ -29,7 +29,6 @@ from tasks import run_medusa
 
 @app.route('/')
 def index():
-    # TODO: Here add sessions to rember past entries in the form?
     return render_template('index.html')
 
 @app.route('/run', methods=['GET', 'POST'])
@@ -65,7 +64,8 @@ def run():
             draft.save(os.path.join(wdir, filename))
             dname = filename
         else:
-            flash(u'Something went wrong with your draft genome', 'error')
+            flash(u'Something went wrong with your draft genome',
+                  'danger')
             return redirect(url_for('index'))
        
         # Save the genomes files
@@ -76,7 +76,8 @@ def run():
                 genome.save(os.path.join(wdir, filename))
                 genomes.add(filename)
         except:
-            flash(u'Something went wrong with your target genome', 'error')
+            flash(u'Something went wrong with your target genomes',
+                 'danger')
             return redirect(url_for('index'))
                 
         # Check email, hash it
@@ -84,15 +85,9 @@ def run():
         if email:
             hemail = generate_hash(email)
         else:
-            flash(u'Something went wrong with your email', 'error')
+            flash(u'Something went wrong with your email', 'danger')
             return redirect(url_for('index'))
         
-        # Notify me?
-        if 'notify' in request.form:
-            notify = True
-        else:
-            notify = False
-
         # Secure my results?
         passphrase = request.form['passphrase']
         if passphrase:
@@ -103,26 +98,102 @@ def run():
         session['req_id'] = req_id       
 
         # Submit the job
-        # Then redirect to the waiting pagei
+        # Then redirect to the waiting page
         try:
             result = run_medusa.delay(wdir, dname, genomes)
         except:
-            flash(u'Could not submit your job', 'error')
+            flash(u'Could not submit your job', 'danger')
             return redirect(url_for('index'))
             
         try:
             # Send details to redis
-            add_job(req_id, request.host, hemail, result.task_id, hpass)
+            add_job(req_id, request.host, hemail,
+                    result.task_id, hpass)
         except:
-            flash(u'Could not save your job details', 'error')
+            flash(u'Could not save your job details', 'danger')
             return redirect(url_for('index')) 
 
         return redirect(url_for('results',
                         req_id=req_id))
 
     # No POST, return to start
-    flash(u'No job details given, would you like to start a new one?', 'warning')
+    flash(u'No job details given, would you like to start a new one?',
+          'warning')
     return redirect(url_for('index'))
+
+@app.route('/log/<req_id>')
+def log(req_id):
+    # Get details from redis
+    j = retrieve_job(req_id)
+
+    # If no data is present, then it may be a wrong req_id
+    if 'task_id' not in j:
+        flash(u'Could not retrieve your job details', 'warning')
+        return redirect(url_for('index')) 
+
+    task_id = j['task_id']
+
+    # TODO: avoid access to redirect to results
+    # Check passphrase
+    if 'req_id' not in session:
+        # bother the user
+        return redirect(url_for('access',
+                        req_id=req_id))
+    if 'req_id' in session and req_id != escape(session['req_id']):
+        # clean the session, then bother the user
+        session.pop('req_id', None)
+        return redirect(url_for('access',
+                        req_id=req_id))
+    
+    # Return the log, if present
+    h2c = req_id[:2]
+    if 'log.txt' not in os.listdir(os.path.join(
+                                      app.config['UPLOAD_FOLDER'],
+                                      h2c, req_id)):
+        flash('Could not retrieve the log.txt file', 'danger')
+        return render_template('error.html', req_id=req_id)
+
+    path = os.path.join(app.config['UPLOAD_FOLDER'],
+                        h2c, req_id, 'log.txt')
+    return Response(''.join(open(path).readlines()),
+                    mimetype='text/plain')
+
+@app.route('/err/<req_id>')
+def err(req_id):
+    # Get details from redis
+    j = retrieve_job(req_id)
+
+    # If no data is present, then it may be a wrong req_id
+    if 'task_id' not in j:
+        flash(u'Could not retrieve your job details', 'warning')
+        return redirect(url_for('index')) 
+
+    task_id = j['task_id']
+
+    # TODO: avoid access to redirect to results
+    # Check passphrase
+    if 'req_id' not in session:
+        # bother the user
+        return redirect(url_for('access',
+                        req_id=req_id))
+    if 'req_id' in session and req_id != escape(session['req_id']):
+        # clean the session, then bother the user
+        session.pop('req_id', None)
+        return redirect(url_for('access',
+                        req_id=req_id))
+    
+    # Return the log, if present
+    h2c = req_id[:2]
+    if 'log.err' not in os.listdir(os.path.join(
+                                      app.config['UPLOAD_FOLDER'],
+                                      h2c, req_id)):
+        flash('Could not retrieve the log.err file', 'danger')
+        return render_template('error.html', req_id=req_id)
+
+    path = os.path.join(app.config['UPLOAD_FOLDER'],
+                        h2c, req_id, 'log.err')
+    return Response(''.join(open(path).readlines()),
+                    mimetype='text/plain')
 
 @app.route('/results/<req_id>')
 def results(req_id):
@@ -151,7 +222,12 @@ def results(req_id):
                         req_id=req_id))
 
     if is_task_ready(run_medusa, task_id):
-        return str(run_medusa.AsyncResult(task_id).get())
+        # run results logics
+        success, result = run_medusa.AsyncResult(task_id).get()
+        if not success:
+            return render_template('error.html', req_id=req_id)
+        return render_template('result.html', req_id=req_id,
+                                              data=result)
     else:
         return render_template('waiting.html')
 
@@ -182,7 +258,7 @@ def access(req_id):
         if passphrase:
             hpass = generate_hash(passphrase)
         else:
-            flash(u'Error handling your passphrase', 'error')
+            flash(u'Error handling your passphrase', 'danger')
             return render_template('access.html', req_id=req_id)
         
         # Compare
@@ -192,7 +268,7 @@ def access(req_id):
             return redirect(url_for('results',
                                     req_id=req_id))
         else:
-            flash(u'Passphrase does not match', 'error')
+            flash(u'Passphrase does not match', 'danger')
             session.pop('req_id', None)
             return render_template('access.html', req_id=req_id)
 
@@ -205,19 +281,15 @@ def stats():
     # Here show the server statistics, using redis as datastore
     # Generate plots on the fly using d3.js?
     # Another function may be needed then to get jsons
-    from time import asctime
-    if 'time' not in session:
-        session['time'] = asctime()
-    return render_template('index.html', time=session['time']) # Here some data
+    flash('Not implemented yet', 'warning')
+    return render_template('index.html')
 
 @app.route('/admin')
 def admin():
     # Here admin section: upload a new medusa
     # Clean manually the jobs
-    from time import asctime
-    if 'time' not in session:
-        session['time'] = asctime()
-    return render_template('index.html', time=session['time']) # Here some data
+    flash('Not implemented yet', 'warning')
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run()
