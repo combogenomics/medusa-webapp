@@ -1,5 +1,5 @@
 {% extends "template.html" %}
-{% block title %}Medusa Server{% endblock %}
+{% block title %}Medusa results{% endblock %}
 {% block container %}
       <div class="container">
         <div class="row">
@@ -14,45 +14,23 @@
           {% endfor %}
         {% endif %}
       {% endwith %}
-            <form role="form" enctype="multipart/form-data"
-                method="post" action="run">
-              <h2>Inputs</h2>
-              <div class="form-group">
-                <label class="control-label">
-                  <label for="draft">Draft genome</label>
-                </label>
-                <input name="draft" type="file" multiple="yes"
-                       required>
-              </div>
-              <div class="form-group">
-                <label class="control-label">
-                  <label for="genomes">Target genomes</label>
-                </label>
-                <input name="genomes" type="file" multiple="yes"
-                       required>
-              </div>
 
-              <h2>Submission details</h2>
-              <div class="form-group">
-                <label for="email">Email address</label>
-                <input type="email" class="form-control" name="email" placeholder="your@email.com"
-                       required>
-                <h6 class="text-muted">
-                  <span class="glyphicon glyphicon-info-sign"> </span>
-                  The email hash is saved for anonymous statistics on the server usage
-                </h6>
-              </div>
-              <div class="form-group">
-                <label for="password">Passphrase</label>
-                <input type="password" class="form-control" name="passphrase" placeholder="Open sesam">
-                <h6 class="text-muted">
-                  <span class="glyphicon glyphicon-warning-sign"> </span>
-                  By default the results page is visible to anyone that knows the page URL (which is then easier to share to your collaborators). Using a passphrase will ensure a better privacy on your analysis.
-                </h6>
-              </div>
-              
-              <button class="btn btn-lg btn-primary btn-block" type="submit">Submit job</button>
-            </form>
+            <table class="table table-condensed table-hover">
+	      <thead>
+                <tr>
+	          <th></th>
+		  <th># contigs</th>
+		  <th>Length (bp)</th>
+                  <th>N50 (bp)</th>
+		</tr>
+              </thead>
+	      <tbody>
+	        <tr>
+	          <!-- logics here -->
+	        </tr>
+	      </tbody>   
+            </table> 
+      
           </div> <!-- /col -->
         </div> <!-- /row -->
 

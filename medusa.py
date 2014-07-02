@@ -195,6 +195,43 @@ def err(req_id):
     return Response(''.join(open(path).readlines()),
                     mimetype='text/plain')
 
+@app.route('/scaffold/<req_id>')
+def scaffold(req_id):
+    # Get details from redis
+    j = retrieve_job(req_id)
+
+    # If no data is present, then it may be a wrong req_id
+    if 'task_id' not in j:
+        flash(u'Could not retrieve your job details', 'warning')
+        return redirect(url_for('index')) 
+
+    task_id = j['task_id']
+
+    # TODO: avoid access to redirect to results
+    # Check passphrase
+    if 'req_id' not in session:
+        # bother the user
+        return redirect(url_for('access',
+                        req_id=req_id))
+    if 'req_id' in session and req_id != escape(session['req_id']):
+        # clean the session, then bother the user
+        session.pop('req_id', None)
+        return redirect(url_for('access',
+                        req_id=req_id))
+    
+    # Return the log, if present
+    h2c = req_id[:2]
+    if 'scaffold.fasta' not in os.listdir(os.path.join(
+                                      app.config['UPLOAD_FOLDER'],
+                                      h2c, req_id)):
+        flash('Could not retrieve the scaffold file', 'danger')
+        return render_template('error.html', req_id=req_id)
+
+    path = os.path.join(app.config['UPLOAD_FOLDER'],
+                        h2c, req_id, 'scaffold.fasta')
+    return Response(''.join(open(path).readlines()),
+                    mimetype='text/plain')
+
 @app.route('/results/<req_id>')
 def results(req_id):
     # Here show the results or the wait page
