@@ -67,10 +67,10 @@ def run_medusa(wdir, draft, targets):
     sdir = os.getcwd()
 
     # Move all the medusa files
-    shutil.copy(os.path.join(sdir, 'medusa', 'medusa.jar'), wdir)
+    shutil.copy(os.path.join(sdir, 'medusa-app', 'medusa.jar'), wdir)
     os.mkdir(os.path.join(wdir, 'medusa_scripts'))
-    for f in os.listdir(os.path.join(sdir, 'medusa', 'medusa_scripts')):
-        shutil.copy(os.path.join(sdir, 'medusa', 'medusa_scripts', f),
+    for f in os.listdir(os.path.join(sdir, 'medusa-app', 'medusa_scripts')):
+        shutil.copy(os.path.join(sdir, 'medusa-app', 'medusa_scripts', f),
                     os.path.join(wdir, 'medusa_scripts'))
 
     # Before moving the genomes, calculte some stats
