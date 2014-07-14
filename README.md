@@ -34,4 +34,6 @@ Move the celeryd.conf file in /etc/default/celeryd, and install the celeryd scri
 
 Create a production.py file which can then be used to override the settings.py debug options.
 
-Restart apache and start celery and redis
+Restart apache and start celery and redis.
+
+To update the server once the upstream repository has been updated, just run git pull and the restart apache and celery.
