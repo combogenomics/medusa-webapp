@@ -114,7 +114,7 @@ def run():
             
         try:
             # Send details to redis
-            add_job(req_id, request.host, hemail,
+            add_job(req_id, request.remote_addr, hemail,
                     result.task_id, hpass)
         except:
             flash(u'Could not save your job details', 'danger')
