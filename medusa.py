@@ -45,7 +45,7 @@ def run():
     # Use redis to store user stats (hashed for privacy)
     if request.method == 'POST':
         # First things first, compute user hash
-        req_id = generate_time_hash(request.host)
+        req_id = generate_time_hash(request.remote_addr)
 
         # To avoid slow-downs in the running directory
         # create subdirs w/ the first 2 chars of the hash
