@@ -2,7 +2,7 @@
 
 import os
 from flask import Flask, request, session, g, redirect, url_for, abort, \
-     render_template, flash, escape, Response
+     render_template, flash, escape, Response, send_from_directory
 from werkzeug.utils import secure_filename
 
 from utils import generate_hash
@@ -235,9 +235,10 @@ def scaffold(req_id):
         return render_template('error.html', req_id=req_id)
 
     path = os.path.join(app.config['UPLOAD_FOLDER'],
-                        h2c, req_id, 'scaffold.fasta')
-    return Response(''.join(open(path).readlines()),
-                    mimetype='text/plain')
+                        h2c, req_id)
+    return send_from_directory(path,
+                               'scaffold.fasta',
+                               as_attachment=True)
 
 @app.route('/results/<req_id>')
 def results(req_id):
