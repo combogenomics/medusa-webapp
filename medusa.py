@@ -154,6 +154,11 @@ def log(req_id):
     
     # Return the log, if present
     h2c = req_id[:2]
+    if not os.path.exists(os.path.join(
+                              app.config['UPLOAD_FOLDER'],
+                              h2c, req_id)):
+        flash('Could not retrieve the log: is your job older than one week?', 'danger')
+        return render_template('index.html') 
     if 'log.txt' not in os.listdir(os.path.join(
                                       app.config['UPLOAD_FOLDER'],
                                       h2c, req_id)):
@@ -191,6 +196,11 @@ def err(req_id):
     
     # Return the log, if present
     h2c = req_id[:2]
+    if not os.path.exists(os.path.join(
+                              app.config['UPLOAD_FOLDER'],
+                              h2c, req_id)):
+        flash('Could not retrieve the log: is your job older than one week?', 'danger')
+        return render_template('index.html')
     if 'log.err' not in os.listdir(os.path.join(
                                       app.config['UPLOAD_FOLDER'],
                                       h2c, req_id)):
@@ -228,6 +238,11 @@ def scaffold(req_id):
     
     # Return the log, if present
     h2c = req_id[:2]
+    if not os.path.exists(os.path.join(
+                              app.config['UPLOAD_FOLDER'],
+                              h2c, req_id)):
+        flash('Could not retrieve the scaffold: is your job older than one week?', 'danger')
+        return render_template('index.html')
     if 'scaffold.fasta' not in os.listdir(os.path.join(
                                       app.config['UPLOAD_FOLDER'],
                                       h2c, req_id)):
