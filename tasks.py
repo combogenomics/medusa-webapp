@@ -33,6 +33,18 @@ def run_cmd(cmd, ignore_error=False):
 
     return bool(not return_code)
 
+def medusa_version():
+    cmd = 'java -jar medusa.jar -h'
+    proc = subprocess.Popen(cmd,shell=(sys.platform!="win32"),
+                    stdin=subprocess.PIPE,stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+    out = proc.communicate()
+    
+    try:
+        return out[0].split('\n')[0].split()[-1]
+    except:
+        return None
+
 def single_genome_stats(fname):
     d = {}
 
@@ -97,6 +109,8 @@ def run_medusa(wdir, draft, targets):
  
     # Move to working directory
     os.chdir(wdir)
+
+    d['version'] = medusa_version()
 
     # Run Medusa
     cmd = 'java -jar medusa.jar -i %s -random 5 -f drafts -o %s'%(draft,

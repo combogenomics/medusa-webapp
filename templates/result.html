@@ -17,6 +17,12 @@
 
             <h2>Results summary</h2>
 
+            {% if data %}
+              {% if 'version' in data %}
+              <p><span class="glyphicon glyphicon-tags"></span> Medusa version: {{ data['version'] }}</p>
+              {% endif %}
+            {% endif %}
+
             <table class="table table-condensed table-hover">
             <thead>
               <tr>
