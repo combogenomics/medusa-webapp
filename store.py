@@ -23,37 +23,61 @@ def retrieve_job(req_id):
 
     return r.hgetall('medusa_%s'%req_id)
 
-def cumulative_jobs():
+def slice_it(li, cols=10):
+    start = 0
+    for i in xrange(cols):
+        stop = start + len(li[i::cols])
+        yield li[start:stop]
+        start = stop
+
+def cumulative_jobs(size=100):
     r = redis.Redis()
 
     i = 0
 
+    res = []
+
     for j in r.zrange('medusajobs', 0, -1):
         i += 1
         date = r.hget(j, 'date')
-        yield (i, date)
+        res.append( (i, date) )
 
-def unique_emails():
+    for s in slice_it(res, cols=size):
+        if len(s) > 0:
+            yield s[-1]
+
+def unique_emails(size=100):
     r = redis.Redis()
 
     ip = set()
+
+    res = []
 
     for j in r.zrange('medusajobs', 0, -1):
         i = r.hget(j, 'email')
         date = r.hget(j, 'date')
         if i not in ip:
             ip.add(i)
-            yield (len(ip), date)
+            res.append( (len(ip), date) )
 
-def unique_ips():
+    for s in slice_it(res, cols=size):
+        if len(s) > 0:
+            yield s[-1] 
+
+def unique_ips(size=100):
     r = redis.Redis()
 
     ip = set()
+
+    res = []
 
     for j in r.zrange('medusajobs', 0, -1):
         i = r.hget(j, 'ip')
         date = r.hget(j, 'date')
         if i not in ip:
             ip.add(i)
-            yield (len(ip), date)
+            res.append( (len(ip), date) )
 
+    for s in slice_it(res, cols=size):
+        if len(s) > 0:
+            yield s[-1]
