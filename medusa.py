@@ -302,8 +302,13 @@ def results(req_id):
 
     if is_task_ready(run_medusa, task_id):
         # run results logics
-        success, result = run_medusa.AsyncResult(task_id).get()
-        if not success:
+        try:
+            success, result = run_medusa.AsyncResult(task_id).get()
+            if not success:
+                return render_template('error.html', req_id=req_id)
+        except Exception as e:
+            app.logger.error('Internal server error: %s'%e)
+            flash(u'Internal server error: %s'%e, 'danger')
             return render_template('error.html', req_id=req_id)
         return render_template('result.html', req_id=req_id,
                                               data=result)
