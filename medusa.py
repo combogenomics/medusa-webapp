@@ -307,7 +307,7 @@ def results(req_id):
             if not success:
                 return render_template('error.html', req_id=req_id)
         except Exception as e:
-            app.logger.error('Internal server error: %s'%e)
+            app.logger.error('Internal server error: %s\nRequest ID: %s' % (e, req_id))
             flash(u'Internal server error: %s'%e, 'danger')
             return render_template('error.html', req_id=req_id)
         return render_template('result.html', req_id=req_id,
