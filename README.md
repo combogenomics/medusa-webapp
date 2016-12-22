@@ -26,6 +26,7 @@ First, install all the dependencies
     sudo pip install -r requirements.txt
 
 Then install in apache the medusa.conf file (changing the paths).
+NOTE: if you have multiplt webservers running, the best way to have them running at the same time seems to include all the WSGI definitions in the same VirtualHost.
 
 Create a production.py file which can then be used to override the settings.py debug options.
 
