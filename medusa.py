@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import json
+import subprocess
+import time
 from flask import Flask, request, session, g, redirect, url_for, abort, \
      render_template, flash, escape, Response, send_from_directory
 from werkzeug.utils import secure_filename
 
 from utils import generate_hash
 from utils import generate_time_hash
-
-from worker import make_celery
-from worker import is_task_ready
 
 from store import add_job
 from store import retrieve_job
@@ -46,12 +46,6 @@ try:
         app.logger.addHandler(mail_handler)
 except ImportError:
     pass
-
-# Init celery
-celery = make_celery(app)
-
-# Later import after celery has been set up
-from tasks import run_medusa
 
 @app.route('/')
 def index():
@@ -126,17 +120,34 @@ def run():
         # Submit the job
         # Then redirect to the waiting page
         try:
-            result = run_medusa.delay(wdir, dname, genomes)
-        except:
-            flash(u'Could not submit your job', 'danger')
+            cmd = 'python tasks.py %s %s %s %s' % (req_id,
+                                                   wdir,
+                                                   dname,
+                                                   ' '.join(genomes))
+            f = open(os.path.join(wdir, 'cmd.sh'), 'w')
+            f.write(cmd + '\n')
+            f.close()
+            cmd = 'at -q b -M now -f %s' % os.path.join(wdir, 'cmd.sh')
+            proc = subprocess.Popen(cmd,
+                                    shell=(sys.platform!="win32"),
+				    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE,
+				    stderr=subprocess.PIPE)
+	    out = proc.communicate()
+	    
+	    return_code = proc.returncode
+	    if return_code != 0:
+		raise Exception('%s'%str(out[1]))
+        except Exception as e:
+            flash(u'Could not submit your job "%s"' % e,
+                  'danger')
             return redirect(url_for('index'))
             
         try:
             # Send details to redis
-            add_job(req_id, request.remote_addr, hemail,
-                    result.task_id, hpass)
-        except:
-            flash(u'Could not save your job details', 'danger')
+            add_job(req_id, request.remote_addr, hemail, hpass)
+        except Exception as e:
+            flash(u'Could not save your job details (%s)' % e, 'danger')
             return redirect(url_for('index')) 
 
         return redirect(url_for('results',
@@ -151,13 +162,6 @@ def run():
 def log(req_id):
     # Get details from redis
     j = retrieve_job(req_id)
-
-    # If no data is present, then it may be a wrong req_id
-    if 'task_id' not in j:
-        flash(u'Could not retrieve your job details', 'warning')
-        return redirect(url_for('index')) 
-
-    task_id = j['task_id']
 
     # TODO: avoid access to redirect to results
     # Check passphrase
@@ -194,13 +198,6 @@ def err(req_id):
     # Get details from redis
     j = retrieve_job(req_id)
 
-    # If no data is present, then it may be a wrong req_id
-    if 'task_id' not in j:
-        flash(u'Could not retrieve your job details', 'warning')
-        return redirect(url_for('index')) 
-
-    task_id = j['task_id']
-
     # TODO: avoid access to redirect to results
     # Check passphrase
     if 'req_id' not in session:
@@ -235,13 +232,6 @@ def err(req_id):
 def scaffold(req_id):
     # Get details from redis
     j = retrieve_job(req_id)
-
-    # If no data is present, then it may be a wrong req_id
-    if 'task_id' not in j:
-        flash(u'Could not retrieve your job details', 'warning')
-        return redirect(url_for('index')) 
-
-    task_id = j['task_id']
 
     # TODO: avoid access to redirect to results
     # Check passphrase
@@ -282,13 +272,6 @@ def results(req_id):
     # Get details from redis
     j = retrieve_job(req_id)
 
-    # If no data is present, then it may be a wrong req_id
-    if 'task_id' not in j:
-        flash(u'Could not retrieve your job details', 'warning')
-        return redirect(url_for('index')) 
-
-    task_id = j['task_id']
-
     # Check passphrase
     if 'req_id' not in session:
         # bother the user
@@ -300,20 +283,42 @@ def results(req_id):
         return redirect(url_for('access',
                         req_id=req_id))
 
-    if is_task_ready(run_medusa, task_id):
+    h2c = req_id[:2]
+    status = j['status']
+    if status == 'Job done':
         # run results logics
         try:
-            success, result = run_medusa.AsyncResult(task_id).get()
-            if not success:
-                return render_template('error.html', req_id=req_id)
+            result = json.load(open(os.path.join(app.config['UPLOAD_FOLDER'],
+                                                 h2c, req_id, 'result.json')))
         except Exception as e:
             app.logger.error('Internal server error: %s\nRequest ID: %s' % (e, req_id))
             flash(u'Internal server error: %s'%e, 'danger')
             return render_template('error.html', req_id=req_id)
         return render_template('result.html', req_id=req_id,
                                               data=result)
+    elif status == 'Job failed':
+        error_msg = j.get('error', '')
+        app.logger.error('Internal server error: %s\nRequest ID: %s' % (error_msg,
+                         req_id))
+        flash(u'Internal server error: %s' % error_msg,
+               'danger')
+        return render_template('error.html', req_id=req_id)
     else:
-        return render_template('waiting.html')
+        # If too much time has passed, it means that the job has either failed
+        # or anything like that
+        cur_time = time.time()
+        start_time = float(j['time'])
+        delta_time = cur_time - start_time
+        if (60 * 15) < delta_time < (60 * 30):
+            flash(u'Your job exceeded 15 minutes, something might have gone wrong!' +
+                  u'Will try 15 more minutes before giving up',
+                  'danger')
+        elif delta_time > (60 * 30):
+            flash(u'Your job exceeded 30 minutes, something must have gone wrong!' +
+                  u'If your genomes are many (and big) you might want to run Medusa locally',
+                  'danger')
+            return render_template('error.html', req_id=req_id)
+        return render_template('waiting.html', status=status)
 
 @app.route('/access/<req_id>', methods=['GET', 'POST'])
 def access(req_id):
@@ -325,11 +330,6 @@ def access(req_id):
     # Get details from redis
     j = retrieve_job(req_id)
 
-    # If no data is present, then it may be a wrong req_id
-    if 'task_id' not in j:
-        flash(u'Could not retrieve your job details', 'warning')
-        return redirect(url_for('index')) 
-    
     # If no passphrase, no need to bother, just redirect
     if 'passphrase' not in j:
         session['req_id'] = req_id

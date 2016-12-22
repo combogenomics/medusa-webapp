@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 
-import celery
 import os
 import shutil
 import subprocess
 import sys
+import json
 
 from Bio import SeqIO
 
 from utils import N50
+
+from store import update_job
 
 def run_cmd(cmd, ignore_error=False):
     """
@@ -74,10 +76,10 @@ def genome_stats(draft, genomes):
 
     return d
 
-@celery.task(name='tasks.run_medusa')
-def run_medusa(wdir, draft, targets):
+def run_medusa(req_id, wdir, draft, targets):
     sdir = os.getcwd()
 
+    update_job(req_id, 'status', 'Copying Medusa files')
     # Move all the medusa files
     shutil.copy(os.path.join(sdir, 'medusa-app', 'medusa.jar'), wdir)
     os.mkdir(os.path.join(wdir, 'medusa_scripts'))
@@ -90,13 +92,15 @@ def run_medusa(wdir, draft, targets):
     # Number of molecules
     # N50
     
+    update_job(req_id, 'status', 'Computing initial statistics')
     # Catch errors, may be due to incorrect format
     try:
         d = genome_stats(os.path.join(wdir,draft),
-                        [os.path.join(wdir, x) for x in targets])
-    except:
-        return (False, {})
+                         [os.path.join(wdir, x) for x in targets])
+    except Exception as e:
+        raise Exception('Something is wrong with the input files (%s)' % e)
 
+    update_job(req_id, 'status', 'Copying genome files')
     # Create he drafts directory, move the genomes there
     try:
         os.mkdir(os.path.join(wdir, 'drafts'))
@@ -109,21 +113,22 @@ def run_medusa(wdir, draft, targets):
  
     # Move to working directory
     os.chdir(wdir)
-
+    
+    update_job(req_id, 'status', 'Getting Medusa version')
     d['version'] = medusa_version()
 
+    update_job(req_id, 'status', 'Running Medusa')
     # Run Medusa
     cmd = 'java -jar medusa.jar -i %s -random 5 -f drafts -o %s'%(draft,
                                                           'scaffold.fasta')
     if not run_cmd(cmd):
-        return (False, d)
+        raise Exception('Medusa execution halted!')
 
+    update_job(req_id, 'status', 'Computing final statistics')
     # Compute results
-    try:
-        d['scaffold'] = single_genome_stats('scaffold.fasta')
-    except:
-        return (False, d)
-
+    d['scaffold'] = single_genome_stats('scaffold.fasta')
+    
+    update_job(req_id, 'status', 'Cleaning up')
     try:
         # Be kind, remove the original files...
         shutil.rmtree('drafts')
@@ -137,4 +142,19 @@ def run_medusa(wdir, draft, targets):
     # Return back to the original directory
     os.chdir(sdir)
 
-    return True, d
+    return d
+
+if __name__ == "__main__":
+    req_id = sys.argv[1]
+    wdir = sys.argv[2]
+    dname = sys.argv[3]
+    genomes = sys.argv[4:]
+
+    update_job(req_id, 'status', 'Job starting')
+    try:
+        result = run_medusa(req_id, wdir, dname, genomes)
+        json.dump(result, open(os.path.join(wdir, 'result.json'), 'w'))
+        update_job(req_id, 'status', 'Job done')
+    except Exception as e:
+        update_job(req_id, 'status', 'Job failed')
+        update_job(req_id, 'error', str(e))
