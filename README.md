@@ -30,9 +30,9 @@ NOTE: if you have multiplt webservers running, the best way to have them running
 
 Create a production.py file which can then be used to override the settings.py debug options.
 
-You may want to tweak the atd deamon parameters to change the load and delay scheduling
+You may want to tweak the atd deamon parameters to change the load and delay scheduling (tested on Debian 3.16)
 
-    sudo systemctl edit atd
+    sudo vim /lib/systemd/system/atd.service
 
 And then introduce the following edits:
 
@@ -42,6 +42,12 @@ And then introduce the following edits:
 
 Where `LOAD` is your desired load threshold to start new jobs
 
+Reload the configuration and restart the service:
+
+    sudo systemctl daemon-reload
+    sudo systemctl restart atd
+    sudo systemctl status atd
+    
 Restart apache and start redis.
 
 To update the server once the upstream repository has been updated, just run git pull and the restart apache.
